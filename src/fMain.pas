@@ -1,27 +1,87 @@
+/// <summary>
+/// ***************************************************************************
+///
+/// Folder to FMX ImageList
+///
+/// Copyright 2022-2024 Patrick Prémartin under AGPL 3.0 license.
+///
+/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+/// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+/// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+/// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+/// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+/// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+/// DEALINGS IN THE SOFTWARE.
+///
+/// ***************************************************************************
+///
+/// Create a FireMonkey TImageList by importing all images in a folder.
+///
+/// ***************************************************************************
+///
+/// Author(s) :
+/// Patrick PREMARTIN
+///
+/// Site :
+/// https://folder2fmximagelist.olfsoftware.fr/
+///
+/// Project site :
+/// https://github.com/DeveloppeurPascal/Folder2FMXImageList
+///
+/// ***************************************************************************
+/// File last update : 2024-08-06T20:38:08.000+02:00
+/// Signature : 1efa9bd9b35daef3885001f930a9f75f5c0ccb45
+/// ***************************************************************************
+/// </summary>
+
 unit fMain;
 
 interface
 
 uses
-  System.SysUtils, System.Types, System.UITypes, System.Classes,
+  System.SysUtils,
+  System.Types,
+  System.UITypes,
+  System.Classes,
   System.Variants,
-  FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
-  FMX.Edit, FMX.Controls.Presentation, System.ImageList, FMX.ImgList,
-  FMX.Layouts;
+  FMX.Types,
+  FMX.Controls,
+  FMX.Forms,
+  FMX.Graphics,
+  FMX.Dialogs,
+  FMX.StdCtrls,
+  FMX.Edit,
+  FMX.Controls.Presentation,
+  System.ImageList,
+  FMX.ImgList,
+  FMX.Layouts,
+  Olf.FMX.SelectDirectory;
 
 type
-  TForm1 = class(TForm)
-    Label1: TLabel;
-    Edit1: TEdit;
+  TfrmMain = class(TForm)
+    lblImportFolder: TLabel;
+    edtImportFolder: TEdit;
     btnSaveToClipboard: TButton;
     ZoneBoutons: TGridPanelLayout;
     btnSaveAsTDataModule: TButton;
+    ToolBar1: TToolBar;
+    btnQuit: TButton;
+    btnAbout: TButton;
+    btnImportFolder: TEllipsesEditButton;
+    OlfSelectDirectoryDialog1: TOlfSelectDirectoryDialog;
     procedure btnSaveToClipboardClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char;
       Shift: TShiftState);
     procedure FormCreate(Sender: TObject);
-    procedure Edit1Enter(Sender: TObject);
+    procedure edtImportFolderEnter(Sender: TObject);
     procedure btnSaveAsTDataModuleClick(Sender: TObject);
+    procedure edtImportFolderDragDrop(Sender: TObject; const Data: TDragObject;
+      const Point: TPointF);
+    procedure edtImportFolderDragOver(Sender: TObject; const Data: TDragObject;
+      const Point: TPointF; var Operation: TDragOperation);
+    procedure btnAboutClick(Sender: TObject);
+    procedure btnQuitClick(Sender: TObject);
+    procedure btnImportFolderClick(Sender: TObject);
   private
     { Déclarations privées }
     procedure ImportPNGFiles(FolderName: string; ImgList: TImageList;
@@ -29,24 +89,29 @@ type
     procedure GenerateDestinationFromSource(ImgList: TImageList);
     procedure ValidatePathField;
     function getTemplateFromResource(TemplateName: string): string;
+    function FilterPascalIdentifier(NameToFilter: string): string;
   public
     { Déclarations publiques }
   end;
 
 var
-  Form1: TForm1;
+  frmMain: TfrmMain;
 
 implementation
 
 {$R *.fmx}
 
-uses System.IOUtils, FMX.Platform;
+uses
+  System.DateUtils,
+  System.IOUtils,
+  FMX.Platform,
+  uAboutBox;
 
 /// <summary>
 /// ComponentToStringProc sérialise un composant pour l'obtenir sous forme de
 /// chaîne de caractères comme dans les sources des écrans (fichiers fmx/dfm).
 /// </summary>
-/// http://docwiki.embarcadero.com/CodeExamples/Sydney/en/ComponentToString_(Delphi)
+/// http://docwiki.embarcadero.com/CodeExamples/en/ComponentToString_(Delphi)
 function ComponentToStringProc(Component: TComponent): string;
 var
   BinStream: TMemoryStream;
@@ -70,21 +135,50 @@ begin
   end;
 end;
 
-procedure TForm1.btnSaveAsTDataModuleClick(Sender: TObject);
+procedure TfrmMain.btnAboutClick(Sender: TObject);
+begin
+  TAboutBox.Execute;
+end;
+
+procedure TfrmMain.btnImportFolderClick(Sender: TObject);
+begin
+  if OlfSelectDirectoryDialog1.Directory.IsEmpty then
+    if (not edtImportFolder.Text.IsEmpty) and
+      TDirectory.Exists(edtImportFolder.Text) then
+      OlfSelectDirectoryDialog1.Directory := edtImportFolder.Text
+    else
+      OlfSelectDirectoryDialog1.Directory := tpath.GetDocumentsPath;
+
+  if OlfSelectDirectoryDialog1.Execute and
+    TDirectory.Exists(OlfSelectDirectoryDialog1.Directory) then
+    edtImportFolder.Text := OlfSelectDirectoryDialog1.Directory;
+end;
+
+procedure TfrmMain.btnQuitClick(Sender: TObject);
+begin
+  close;
+end;
+
+procedure TfrmMain.btnSaveAsTDataModuleClick(Sender: TObject);
 var
   ImgList: TImageList;
   UnitName: string;
-  FilePath: string;
+  DFMFilePath: string;
+  PASFilePath: string;
+  TXTFilePath: string;
   UnitDFMSource: string;
   UnitPASSource: string;
   DMName: string;
+  s: string;
+  i: integer;
 begin
   ValidatePathField;
 
   ZoneBoutons.Enabled := false;
 
   try
-    DMName := 'dm' + tpath.GetFileNameWithoutExtension(Edit1.Text);
+    DMName := 'dm' + FilterPascalIdentifier
+      (tpath.GetFileNameWithoutExtension(edtImportFolder.Text));
   except
     DMName := 'dm';
   end;
@@ -93,30 +187,44 @@ begin
   try
     ImgList.Name := 'ImageList';
 
-    ImportPNGFiles(Edit1.Text, ImgList);
+    ImportPNGFiles(edtImportFolder.Text, ImgList);
 
     GenerateDestinationFromSource(ImgList);
 
     UnitName := 'u' + DMName;
     try
-      FilePath := tpath.Combine(Edit1.Text, UnitName + '.dfm');
+      DFMFilePath := tpath.Combine(edtImportFolder.Text, UnitName + '.dfm');
       UnitDFMSource := getTemplateFromResource('DM_dfm_template');
-      tfile.WriteAllText(FilePath, UnitDFMSource.Replace('%%UnitName%%',
+      tfile.WriteAllText(DFMFilePath, UnitDFMSource.Replace('%%UnitName%%',
         UnitName).Replace('%%DMName%%', DMName).Replace('%%ImageListName%%',
         ImgList.Name).Replace('%%ImageList%%', ComponentToStringProc(ImgList)));
       try
-        FilePath := tpath.Combine(Edit1.Text, UnitName + '.pas');
+        PASFilePath := tpath.Combine(edtImportFolder.Text, UnitName + '.pas');
         UnitPASSource := getTemplateFromResource('DM_pas_template');
-        tfile.WriteAllText(FilePath, UnitPASSource.Replace('%%UnitName%%',
+        tfile.WriteAllText(PASFilePath, UnitPASSource.Replace('%%UnitName%%',
           UnitName).Replace('%%DMName%%', DMName).Replace('%%ImageListName%%',
-          ImgList.Name));
-
-        ShowMessage('Image list saved as unit ' + FilePath);
+          ImgList.Name).Replace('%%datetime%%', DateToISO8601(now, true))
+          .Replace('%%ImportFolder%%', edtImportFolder.Text)
+          .Replace('%%AboutCaption%%',
+          TAboutBox.Current.OlfAboutDialog1.GetMainFormCaption)
+          .Replace('%%AboutURL%%', TAboutBox.Current.OlfAboutDialog1.URL));
+        try
+          TXTFilePath := tpath.Combine(edtImportFolder.Text, UnitName + '.lst');
+          s := '';
+          for i := 0 to ImgList.Destination.Count - 1 do
+            s := s + ImgList.Destination[i].Layers[0].Name + Tabulator +
+              i.ToString + CarriageReturn + LineFeed;
+          tfile.WriteAllText(TXTFilePath, s);
+          ShowMessage('Image list saved as unit ' + PASFilePath);
+        except
+          ShowMessage('Can''t save ' + TXTFilePath +
+            ' but .pas and .dfm files are okay.');
+        end;
       except
-        ShowMessage('Can''t save ' + FilePath + ' but .fmx is okay.');
+        ShowMessage('Can''t save ' + PASFilePath + ' but .dfm is okay.');
       end;
     except
-      ShowMessage('Can''t save ' + FilePath);
+      ShowMessage('Can''t save ' + DFMFilePath);
     end;
   finally
     ImgList.Free;
@@ -124,7 +232,7 @@ begin
   end;
 end;
 
-procedure TForm1.btnSaveToClipboardClick(Sender: TObject);
+procedure TfrmMain.btnSaveToClipboardClick(Sender: TObject);
 var
   ImgList: TImageList;
   cb: IFMXClipboardService;
@@ -135,16 +243,17 @@ begin
   ImgList := TImageList.Create(self);
   try
     try
-      ImgList.Name := tpath.GetFileNameWithoutExtension(Edit1.Text);
+      ImgList.Name := FilterPascalIdentifier
+        (tpath.GetFileNameWithoutExtension(edtImportFolder.Text));
     except
       ImgList.Name := 'ImageList1';
     end;
 
-    ImportPNGFiles(Edit1.Text, ImgList);
+    ImportPNGFiles(edtImportFolder.Text, ImgList);
 
     GenerateDestinationFromSource(ImgList);
 
-    if TPlatformServices.current.SupportsPlatformService(IFMXClipboardService,
+    if TPlatformServices.Current.SupportsPlatformService(IFMXClipboardService,
       iinterface(cb)) then
     begin
       cb.SetClipboard(ComponentToStringProc(ImgList));
@@ -159,22 +268,82 @@ begin
   end;
 end;
 
-procedure TForm1.Edit1Enter(Sender: TObject);
+procedure TfrmMain.edtImportFolderDragDrop(Sender: TObject;
+  const Data: TDragObject; const Point: TPointF);
+var
+  i: integer;
 begin
-  Edit1.SelectAll;
+  for i := 0 to length(Data.files) - 1 do
+    if TDirectory.Exists(Data.files[i]) then
+    begin
+      edtImportFolder.Text := Data.files[i];
+      btnSaveAsTDataModuleClick(Sender);
+    end;
+  edtImportFolder.Text := '';
+  edtImportFolder.SetFocus;
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TfrmMain.edtImportFolderDragOver(Sender: TObject;
+  const Data: TDragObject; const Point: TPointF; var Operation: TDragOperation);
+var
+  ok: boolean;
+  i: integer;
+begin
+  ok := false;
+  for i := 0 to length(Data.files) - 1 do
+    if TDirectory.Exists(Data.files[i]) then
+    begin
+      ok := true;
+      break;
+    end;
+  if ok then
+    Operation := TDragOperation.Copy
+  else
+    Operation := TDragOperation.None;
+end;
+
+procedure TfrmMain.edtImportFolderEnter(Sender: TObject);
+begin
+  edtImportFolder.SelectAll;
+end;
+
+function TfrmMain.FilterPascalIdentifier(NameToFilter: string): string;
+var
+  i: integer;
+  c: Char;
+  ChiffresAutorises: boolean;
+begin
+  // pas de chiffre en premier caractère
+  // que des lettres (majuscules, minuscules), des soulignes, des chiffres
+  Result := '';
+  ChiffresAutorises := false;
+  for i := 0 to NameToFilter.length - 1 do
+  begin
+    c := NameToFilter.Chars[i];
+    if CharInSet(c, ['a' .. 'z', 'A' .. 'Z', '_']) or
+      (ChiffresAutorises and (CharInSet(c, ['0' .. '9']))) then
+    begin
+      Result := Result + c;
+      if not ChiffresAutorises then
+        ChiffresAutorises := true;
+    end;
+  end;
+  if (Result.IsEmpty) then
+    raise exception.Create
+      ('Filename not compatible with a Pascal identifier !');
+end;
+
+procedure TfrmMain.FormCreate(Sender: TObject);
 begin
 {$IFDEF DEBUG}
-  Edit1.Text :=
+  edtImportFolder.Text :=
     'C:\Users\olfso\Documents\Embarcadero\Studio\Projets\Folder2FMXImageList\TestImages';
 {$ENDIF}
-  Edit1.SetFocus;
+  edtImportFolder.SetFocus;
 end;
 
-procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char;
-  Shift: TShiftState);
+procedure TfrmMain.FormKeyDown(Sender: TObject; var Key: Word;
+  var KeyChar: Char; Shift: TShiftState);
 begin
   if Key = vkescape then
   begin
@@ -184,29 +353,31 @@ begin
   end;
 end;
 
-procedure TForm1.GenerateDestinationFromSource(ImgList: TImageList);
+procedure TfrmMain.GenerateDestinationFromSource(ImgList: TImageList);
 var
-  lst: array of string;
+  lst: TStringList;
   i: integer;
 begin
-  setlength(lst, ImgList.Source.Count);
-  for i := 0 to ImgList.Source.Count - 1 do
-    lst[i] := ImgList.Source[i].Name;
+  lst := TStringList.Create;
+  try
+    for i := 0 to ImgList.Source.Count - 1 do
+      lst.Add(ImgList.Source[i].Name);
 
-  // TODO : Tri alpha de la liste
+    lst.Sort;
 
-  for i := 0 to length(lst) - 1 do
-  begin
-    with ImgList.Destination.Add.Layers.Add do
-    begin
-      name := lst[i];
-      sourcerect.rect := ImgList.Source[ImgList.Source.IndexOf(name)
-        ].MultiResBitmap.ItemByScale(1, true, false).Bitmap.BoundsF;
-    end;
+    for i := 0 to lst.Count - 1 do
+      with ImgList.Destination.Add.Layers.Add do
+      begin
+        name := lst[i];
+        sourcerect.rect := ImgList.Source[ImgList.Source.IndexOf(name)
+          ].MultiResBitmap.ItemByScale(1, true, false).Bitmap.BoundsF;
+      end;
+  finally
+    lst.Free;
   end;
 end;
 
-function TForm1.getTemplateFromResource(TemplateName: string): string;
+function TfrmMain.getTemplateFromResource(TemplateName: string): string;
 var
   rs: TResourceStream;
   st: TStringStream;
@@ -215,7 +386,7 @@ begin
   rs := TResourceStream.Create(MainInstance, TemplateName, RT_RCDATA);
   try
     rs.Position := 0;
-    st := TStringStream.Create;
+    st := TStringStream.Create('', tencoding.UTF8);
     try
       st.CopyFrom(rs);
       st.Position := 0;
@@ -228,22 +399,22 @@ begin
   end;
 end;
 
-procedure TForm1.ValidatePathField;
+procedure TfrmMain.ValidatePathField;
 begin
-  if (Edit1.Text.IsEmpty) then
+  if (edtImportFolder.Text.IsEmpty) then
   begin
-    Edit1.SetFocus;
+    edtImportFolder.SetFocus;
     raise exception.Create
       ('Please specify the folder where are the PNG files to import.');
   end;
-  if (not TDirectory.Exists(Edit1.Text)) then
+  if (not TDirectory.Exists(edtImportFolder.Text)) then
   begin
-    Edit1.SetFocus;
+    edtImportFolder.SetFocus;
     raise exception.Create('It''s not a valid folder.');
   end;
 end;
 
-procedure TForm1.ImportPNGFiles(FolderName: string; ImgList: TImageList;
+procedure TfrmMain.ImportPNGFiles(FolderName: string; ImgList: TImageList;
   Recursive: boolean);
 var
   lst: tstringdynarray;

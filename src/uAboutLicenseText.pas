@@ -29,32 +29,22 @@
 /// https://github.com/DeveloppeurPascal/Folder2FMXImageList
 ///
 /// ***************************************************************************
-/// File last update : 2024-08-06T20:16:04.000+02:00
-/// Signature : 615a7e5ba0a6168e7c871aa0632462d4307bb270
+/// File last update : 2024-08-06T20:00:32.000+02:00
+/// Signature : 1a2521828c109486d9f316f8d5e743f79e751ccc
 /// ***************************************************************************
 /// </summary>
 
-program Folder2FMXImageList;
+unit uAboutLicenseText;
 
-{$R *.dres}
+interface
 
-uses
-  FMX.Forms,
-  fMain in 'fMain.pas' {frmMain},
-  u_urlOpen in '..\lib-externes\librairies\src\u_urlOpen.pas',
-  Olf.FMX.AboutDialog in '..\lib-externes\AboutDialog-Delphi-Component\src\Olf.FMX.AboutDialog.pas',
-  Olf.FMX.AboutDialogForm in '..\lib-externes\AboutDialog-Delphi-Component\src\Olf.FMX.AboutDialogForm.pas' {OlfAboutDialogForm},
-  uAboutBox in 'uAboutBox.pas' {AboutBox: TDataModule},
-  uAboutDescriptionText in 'uAboutDescriptionText.pas',
-  uAboutLicenseText in 'uAboutLicenseText.pas',
-  uConsts in 'uConsts.pas',
-  Olf.FMX.SelectDirectory in '..\lib-externes\Delphi-FMXExtend-Library\src\Olf.FMX.SelectDirectory.pas';
+const
+  CAboutLicenseEN = '''
+This program is distributed as shareware. If you use it (especially for commercial or income-generating purposes), please remember the author and contribute to its development by purchasing a license.
 
-{$R *.res}
+This software is supplied as is, with or without bugs. No warranty is offered as to its operation or the data processed. Make backups!
+''';
 
-begin
-  Application.Initialize;
-  Application.CreateForm(TfrmMain, frmMain);
-  Application.Run;
+implementation
 
 end.

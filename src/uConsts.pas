@@ -29,32 +29,19 @@
 /// https://github.com/DeveloppeurPascal/Folder2FMXImageList
 ///
 /// ***************************************************************************
-/// File last update : 2024-08-06T20:16:04.000+02:00
-/// Signature : 615a7e5ba0a6168e7c871aa0632462d4307bb270
+/// File last update : 2024-08-06T20:00:54.000+02:00
+/// Signature : 7543359d027a64c68453eae2a8c3ba8a7996573b
 /// ***************************************************************************
 /// </summary>
 
-program Folder2FMXImageList;
+unit uConsts;
 
-{$R *.dres}
+interface
 
-uses
-  FMX.Forms,
-  fMain in 'fMain.pas' {frmMain},
-  u_urlOpen in '..\lib-externes\librairies\src\u_urlOpen.pas',
-  Olf.FMX.AboutDialog in '..\lib-externes\AboutDialog-Delphi-Component\src\Olf.FMX.AboutDialog.pas',
-  Olf.FMX.AboutDialogForm in '..\lib-externes\AboutDialog-Delphi-Component\src\Olf.FMX.AboutDialogForm.pas' {OlfAboutDialogForm},
-  uAboutBox in 'uAboutBox.pas' {AboutBox: TDataModule},
-  uAboutDescriptionText in 'uAboutDescriptionText.pas',
-  uAboutLicenseText in 'uAboutLicenseText.pas',
-  uConsts in 'uConsts.pas',
-  Olf.FMX.SelectDirectory in '..\lib-externes\Delphi-FMXExtend-Library\src\Olf.FMX.SelectDirectory.pas';
+const
+  CVersionNumber = '1.2';
+  CVersionDate = '20240806';
 
-{$R *.res}
-
-begin
-  Application.Initialize;
-  Application.CreateForm(TfrmMain, frmMain);
-  Application.Run;
+implementation
 
 end.
